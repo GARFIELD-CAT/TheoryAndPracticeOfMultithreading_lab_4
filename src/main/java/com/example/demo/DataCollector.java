@@ -10,13 +10,13 @@ public class DataCollector {
 
     private volatile int processedCount = 0;
     private final Object monitor = new Object(); // Объект для wait/notify
+    private static final int MAX_ATTEMPTS = 10;
 
     // Метод для добавления элемента. Защищен синхронизацией.
     public void collectItem(Item item) {
         synchronized (monitor) { // Блокировка на самом объекте DataCollector
             if (!processedItems.contains(item.getKey())) {
                 dataList.add(item);
-                processedItems.add(item.getKey());
                 System.out.println(Thread.currentThread().getName() + " собрал: " + item.getKey());
                 // Оповещаем все ожидающие потоки о том, что данные доступны
                 monitor.notifyAll();
@@ -29,13 +29,25 @@ public class DataCollector {
     public void incrementProcessed() {
         synchronized (monitor) {
             processedCount++;
-             System.out.println(Thread.currentThread().getName() + " увеличил processedCount до: " + processedCount);
+            System.out.println(Thread.currentThread().getName() + " увеличил processedCount до: " + processedCount);
         }
     }
 
     public boolean isAlreadyProcessed(String key) {
         synchronized (monitor) {
-            return processedItems.contains(key);
+            if (processedItems.contains(key)){
+                return true;
+            } else {
+                processedItems.add(key);
+
+                return false;
+            }
+        }
+    }
+
+    public Set<String> getAllProcessedData() {
+        synchronized (monitor) {
+            return new HashSet<>(processedItems);
         }
     }
 
@@ -52,10 +64,13 @@ public class DataCollector {
     }
 
     public void waitForData() throws InterruptedException {
+        int attempts = 0;
+
         synchronized (monitor) { // Поток должен владеть блокировкой на 'this' для вызова wait()
-            while (dataList.isEmpty()) {
+            while (dataList.isEmpty() && attempts < MAX_ATTEMPTS) {
                 System.out.println(Thread.currentThread().getName() + " ожидает данных...");
-                monitor.wait(); // Поток освобождает блокировку и переходит в состояние ожидания
+                monitor.wait(1000); // Поток освобождает блокировку и переходит в состояние ожидания
+                attempts++;
             }
         }
     }

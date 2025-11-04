@@ -19,7 +19,8 @@ public class DemoApplication {
         int numProcessors = 2;
         int itemsPerCollector = 5;
         int totalItems = numCollectors * itemsPerCollector;
-        int itemsPerProcessor = totalItems / numProcessors; // Примерное распределение
+        // Так делаем, чтобы не потерять таски при нечетном делении
+        int itemsPerProcessor = (int)Math.ceil(totalItems / (float)numProcessors);
 
         List<Thread> collectorThreads = new ArrayList<>();
         List<Thread> processorThreads = new ArrayList<>();
@@ -35,11 +36,7 @@ public class DemoApplication {
 
         // Создание и запуск потоков-обработчиков
         for (int i = 0; i < numProcessors; i++) {
-            // Некоторые обработчики могут получать немного больше элементов для распределения
-            int currentItemsToProcess = (i == numProcessors - 1) ?
-                    itemsPerProcessor + (totalItems % numProcessors) :
-                    itemsPerProcessor;
-            ProcessorThread processor = new ProcessorThread("Processor-" + (i + 1), safeCollector, currentItemsToProcess);
+            ProcessorThread processor = new ProcessorThread("Processor-" + (i + 1), safeCollector, itemsPerProcessor);
             processorThreads.add(processor);
             processor.start();
         }
@@ -61,16 +58,15 @@ public class DemoApplication {
 
         System.out.println("Итоговая статистика (Синхронизированная система)");
         System.out.println("Ожидаемое количество элементов: " + totalItems);
-        System.out.println("Фактическое количество собранных элементов: " + safeCollector.getAllCollectedData().size());
+        // Должно остаться 0 элементов
+        System.out.println("Количество необработанных собранных элементов: " + safeCollector.getAllCollectedData().size());
         System.out.println("Фактическое количество обработанных элементов (processedCount): " + safeCollector.getProcessedCount());
 
         // Проверка, совпадает ли processedCount с общим количеством уникальных ключей
         Set<String> uniqueKeys = new HashSet<>();
-        safeCollector.getAllCollectedData().forEach(item -> uniqueKeys.add(item.getKey()));
-        System.out.println("Количество уникальных ключей в собранных данных: " + uniqueKeys.size());
+        uniqueKeys.addAll(safeCollector.getAllProcessedData());
+        System.out.println("Количество уникальных ключей в обработанных данных: " + uniqueKeys.size());
 
-        // Если processedCount == totalItems и uniqueKeys.size() == totalItems (или меньше, если были дубликаты, но collectItem их обрабатывает),
-        // то система работает корректно.
         if (safeCollector.getProcessedCount() == totalItems && safeCollector.getAllCollectedData().isEmpty()) {
             System.out.println("Результат: Синхронизированная система работает корректно!");
         } else {
