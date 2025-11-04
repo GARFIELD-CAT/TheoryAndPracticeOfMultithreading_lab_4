@@ -28,14 +28,12 @@ public class ProcessorThread extends Thread{
                     // Имитация обработки данных
                     Thread.sleep((long) (Math.random() * 150));
                     // Проверяем, не обработан ли элемент уже другим потоком (на всякий случай, если логика сложнее)
-                    synchronized (item.getKey().intern()) {
-                        if (!dataCollector.isAlreadyProcessed(item.getKey())) {
-                            // Обработка элемента
-                            System.out.println(this.threadName + " обработал: " + item.getKey() + " -> " + item.getValue());
-                            dataCollector.incrementProcessed();
-                        } else {
-                            System.out.println(this.threadName + " обнаружил, что " + item.getKey() + " уже обработан.");
-                        }
+                    if (!dataCollector.isAlreadyProcessed(item.getKey())) {
+                        // Обработка элемента
+                        System.out.println(this.threadName + " обработал: " + item.getKey() + " -> " + item.getValue());
+                        dataCollector.incrementProcessed();
+                    } else {
+                        System.out.println(this.threadName + " обнаружил, что " + item.getKey() + " уже обработан.");
                     }
                     } else{
                         // Это условие не должно выполняться, если waitForData() работает корректно,
